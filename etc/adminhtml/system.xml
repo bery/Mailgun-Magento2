@@ -19,12 +19,8 @@
                     <label>Domain</label>
                 </field>
 
-                <field id="private_key" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Private Key</label>
-                </field>
-
-                <field id="public_key" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Public Key</label>
+                <field id="api_key" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Api Key</label>
                 </field>
 
             </group>
