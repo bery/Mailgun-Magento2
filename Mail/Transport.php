@@ -13,6 +13,7 @@ use Mailgun\Mailgun;
 use Mailgun\Messages\MessageBuilder;
 use Zend_Mail;
 
+
 class Transport extends MagentoTransport implements TransportInterface
 {
 
@@ -56,23 +57,11 @@ class Transport extends MagentoTransport implements TransportInterface
             return;
         }
 
-        $messageBuilder = $this->createMailgunMessage($this->parseMessage());
+        $message = $this->createMailgunMessage($this->message);
 
-        $mailgun = new Mailgun($this->config->privateKey(), $this->getHttpClient(), $this->config->endpoint());
-        $mailgun->setApiVersion($this->config->version());
-        $mailgun->setSslEnabled($this->config->ssl());
+        $mailgun = Mailgun::create($this->config->getApiKey());
 
-        $mailgun->sendMessage($this->config->domain(), $messageBuilder->getMessage(), $messageBuilder->getFiles());
-    }
-
-    /**
-     * @return array
-     */
-    protected function parseMessage()
-    {
-        $parser = new MessageParser($this->message);
-
-        return $parser->parse();
+        $mailgun->messages->send($this->config->domain(), $message->getTo(), $message->toString());
     }
 
     /**
@@ -91,30 +80,17 @@ class Transport extends MagentoTransport implements TransportInterface
      */
     protected function createMailgunMessage(array $message)
     {
-        $builder = new MessageBuilder();
-        $builder->setFromAddress($message['from']);
-        $builder->setSubject($message['subject']);
-        foreach ($message['to'] as $to) {
-            $builder->addToRecipient($to);
-        }
+        $message = \Swift_Message::newInstance($message['subject']);
+        $message->setFrom($message['from']);
+        // We need all "tos". Incluce the BCC here.
+        $message->setTo(array_merge($message['to'],$message['bcc']));
+        $message->setCc($message['cc']);
 
-        foreach ($message['cc'] as $cc) {
-            $builder->addCcRecipient($cc);
-        }
+        $message->setBody($message['text'], 'text');
+        $message->setBody($message['html'], 'text/html');
 
-        foreach ($message['bcc'] as $bcc) {
-            $builder->addBccRecipient($bcc);
-        }
-
-        if ($message['html']) {
-            $builder->setHtmlBody($message['html']);
-        }
-
-        if ($message['text']) {
-            $builder->setTextBody($message['text']);
-        }
-
-        return $builder;
+        // Send the message
+        return $message;
     }
 
 }
