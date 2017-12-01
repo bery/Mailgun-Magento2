@@ -43,9 +43,9 @@ class Config extends AbstractHelper
     /**
      * @return string
      */
-    public function privateKey()
+    public function getApiKey()
     {
-        return $this->scopeConfig->getValue('bogardo_mailgun/api/private_key', ScopeInterface::SCOPE_STORE);
+        return $this->scopeConfig->getValue('bogardo_mailgun/api/api_key', ScopeInterface::SCOPE_STORE);
     }
 
     /**

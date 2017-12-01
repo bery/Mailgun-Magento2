@@ -8,9 +8,8 @@ use Magento\Framework\App\ObjectManager;
 use Magento\Framework\Mail\MessageInterface;
 use Magento\Framework\Mail\Transport as MagentoTransport;
 use Magento\Framework\Mail\TransportInterface;
-use Magento\Framework\Phrase;
 use Mailgun\Mailgun;
-use Mailgun\Messages\MessageBuilder;
+use Mailgun\HttpClientConfigurator;
 use Zend_Mail;
 
 
@@ -58,10 +57,22 @@ class Transport extends MagentoTransport implements TransportInterface
         }
 
         $message = $this->createMailgunMessage($this->message);
-
-        $mailgun = Mailgun::create($this->config->getApiKey());
-
-        $mailgun->messages->send($this->config->domain(), $message->getTo(), $message->toString());
+        if($this->config->testMode()){
+            $configurator = new HttpClientConfigurator();
+            $configurator->setEndpoint('http://bin.mailgun.net/8e51aaa3');
+            $configurator->setDebug(true);
+            $mailgun = Mailgun::configure($configurator);
+        }else{
+            $mailgun = Mailgun::create($this->config->getApiKey());
+        }
+        $mailgun->messages()->send($this->config->domain(),
+            [
+                'from'    => $this->message->getFrom(),
+                'to'      => $this->message->getRecipients(),
+                'subject' => $this->message->getSubject(),
+                'text'    => $this->message->getBodyText(true),
+                'html'    => $this->message->getBodyHtml()
+            ]);
     }
 
     /**
@@ -78,16 +89,16 @@ class Transport extends MagentoTransport implements TransportInterface
      * @return \Mailgun\Messages\MessageBuilder
      * @throws \Mailgun\Messages\Exceptions\TooManyParameters
      */
-    protected function createMailgunMessage(array $message)
+    protected function createMailgunMessage($messageObject)
     {
-        $message = \Swift_Message::newInstance($message['subject']);
-        $message->setFrom($message['from']);
+        $message = new \Swift_Message();
+        $message->setSubject($messageObject->getSubject());
+        $message->setFrom($messageObject->getFrom());
         // We need all "tos". Incluce the BCC here.
-        $message->setTo(array_merge($message['to'],$message['bcc']));
-        $message->setCc($message['cc']);
+        $message->setTo($messageObject->getRecipients());
 
-        $message->setBody($message['text'], 'text');
-        $message->setBody($message['html'], 'text/html');
+        $message->setBody($messageObject->getBodyHtml(true), 'text/html');
+        $message->addPart($messageObject->getBodyText(true), 'text/plain');
 
         // Send the message
         return $message;
